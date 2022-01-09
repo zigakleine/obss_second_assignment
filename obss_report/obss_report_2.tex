@@ -1,0 +1,106 @@
+
+\documentclass[9pt]{IEEEtran}
+
+% basic
+\usepackage[english]{babel}
+\usepackage{graphicx,epstopdf,fancyhdr,amsmath,amsthm,amssymb,url,array,textcomp,svg,listings,hyperref,xcolor,colortbl,float,gensymb,longtable,supertabular,multicol,placeins}
+\usepackage{diagbox}
+ % `sumniki' in names
+\usepackage[utf8x]{inputenc}
+\usepackage{multirow}
+\usepackage{makecell}
+
+ % search and copy for `sumniki'
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+% tidy figures
+\graphicspath{{./figures/}}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg,.eps}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor trig-gs}
+
+% ============================================================================================
+
+\title{\vspace{0ex} %
+% TITLE IN HERE:
+QRS Complex Classification Using Simple Distance Measures
+\\ \large{Assignment \#2}\\ \normalsize{Biometrical signal and image processing 2020/21, Faculty of Computer and Information Science, University of Ljubljana}}
+\author{ %
+% AUTHOR IN HERE:
+Žiga~Kleine
+\vspace{-4.0ex}
+}
+
+% ============================================================================================
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+
+This report presents an implementation of a simple QRS complex classifier, classifying pre-detected heartbeats into normal heartbeats (N), and the abnormal ones, represented only by ventricular ectopic heartbeats (V). It is based on calculating the distance between samples of pre-detected heartbeats. Before classification, I have also eliminated baseline drift using a  high-pass Butterworth filter for drift suppression. I used the MATLAB programming framework, which includes many functions useful for digital signal processing. I evaluated the algorithm on the MIT-BIH Arrhythmia Database using the wfdb software package functions bxb and sumstats \cite{moody2001impact, goldberger2000physiobank}. 
+
+\end{abstract}
+
+\section{Introduction}
+
+The problem of QRS complex classification has been tackled many times, usually using some type of feature extraction and comparison between heartbeats, using different techniques of feature extraction and classification. Feature extractors vary from averaging functions to wavelet transform based methods. Classificators can be simple euclidian or manhattan distance measuring techniques, but in the last years, neural network approaches for classification have been tested \cite{singh2014automatic, chen2003development, abibullaev2011new}.
+
+\section{Methodology}
+
+The implementation can be split into two tasks. The first task is baseline drift suppression and the second one is feature extraction and classification. But at first, I tried to reduce noise in the recording by working on the signal calculated by averaging all of the channels of the recording. 
+
+I solved the baseline drift problem by applying a high-pass Butterworth filter. I set the cutoff frequency to 0.8 Hz. To compensate for the phase shift done by the Butterworth filter, I first filtered the signal, then flipped it around, filtered it again, and lastly flipped it back.This way the phase shift made by the filter was cancelled out.  
+
+The classification part basically consists of first selecting the average normal (N) heartbeat to compare it to other heartbeats in the recording. At first I tried to use the sigavg command from the wfdb software package to extract the average normal heartbeat from the first 5 minutes of the recording. But I found out that there can often be baseline drift found in the first few minutes of the recording. So I opted for a different approach. I implemented an algorithm in MATLAB, that loops over the detected normal heartbeats in the first 5 minutes of each recording and then averages all of them. A hearbeat feature vector consists of signal samples from 60 ms before the fiducial point to 100ms after the fiducial point. 
+
+The heartbeats were then classified as either normal (N) or as ventricular ectopic heartbeats (V), by calculating distance between our average normal heartbeat and the current heartbeat that we want to classify. I used the distance equation similar to the euclidean distance \ref{eq3}. If the distance between the average beat and the beat of interest was less than 50, the heartbeat was classified as normal, otherwise it was classified as a ventricular ectopic. 
+ 
+\begin{equation} \label{eq3}
+d2 =  \sqrt{\dfrac{1}{N} *(|x_1 - y_1|^2 + |x_2 - y_2|^2  + ... + |x_N - y_N|^2 )}
+ \end{equation}
+
+\section{Results}
+
+Detections done in MATLAB were appended to .asc type text files. These files were then converted to binary .qrs files that were suitable for the bxb evaluation command from the wfdb toolbox. Detections were compared to modified .atr files, named .fatr, which included annotations just for normal and ventricular etopic types of heartbeats. Using the command sumstats, results were then gathered in a text file. Then, I calculated the measures of Sensitivity \ref{eq4}, Positive Predictivity \ref{eq5} and Specificity \ref{eq6}, by gathering True positives, False positives, False negatives and True negatives from the results.txt file by using the following key \ref{table2}:
+
+\begin{table}[!htb]
+\centering
+\begin{tabular}{|c|c|} \hline
+Nn & true positive \\ \hline
+Nv & false negative \\ \hline
+Vn & false positive \\ \hline
+Vv & true negative  \\ \hline
+\end{tabular}
+\label{table2}
+\end{table}
+
+
+\begin{equation} \label{eq4}
+Se =  \dfrac{TP}{TP + FN} 
+ \end{equation}
+
+\begin{equation} \label{eq5}
++P =  \dfrac{TP}{TP +FP} 
+ \end{equation}
+
+\begin{equation} \label{eq6}
+Sp =  \dfrac{TN}{TN +FP} 
+ \end{equation}
+ 
+The Sensitivity of my implementation is 0.9559, the Positive Predictivity is  0.9891, and the Specificity is 0.8839. These metrics were gathered by running the implemented algorithm on the MIT-BIH Arrhythmia Database, where recordings 107, 109, 111, 118, 124, 207, 214 and 232 were excluded, because there were no normal or ventricular etopic heartbeats found in these recordings.
+
+\section{Discussion}
+
+The results were quite good for such a simple implementation, but could definitely be improved by using more advanced methods of feature extraction and classification, like extraction based on wavelet transform and classification using neural networks.
+
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography}
+
+\end{document}
